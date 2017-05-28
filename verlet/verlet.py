@@ -1,12 +1,17 @@
-import numpy
+from potentials import Potential
 
 
 class VelocityVerlet:
 
     def __init__(self, data, potential, timestep):
         self.data = data
-        self.potential = potential
         self.timestep = timestep
+
+        if not type(potential) == list:
+            self.potential = [potential]
+        else:
+            self.potential = potential
+        self.validate_potentials(self.potential)
 
         self.t = 0
 
@@ -14,15 +19,25 @@ class VelocityVerlet:
         dt = self.timestep
         t_next = self.t + dt
 
-        v_half = self.data["velocity"] + (0.5 * self.data["acceleration"] * dt)
-        x_next = self.data["pos"] + (v_half * dt)
+        vx_half = self.data["v"]["x"] + (0.5 * self.data["a"]["x"] * dt)
+        vy_half = self.data["v"]["y"] + (0.5 * self.data["a"]["y"] * dt)
 
-        a_next = self.potential(x_next)
-        v_next = v_half + (0.5 * a_next * dt)
+        self.data["x"] += (vx_half * dt)
+        self.data["y"] += (vy_half * dt)
 
-        self.data["pos"] = x_next
-        self.data["velocity"] = v_next
-        self.data["acceleration"] = a_next
+        self._update_acceleration()
+
+        self.data["v"]["x"] = vx_half + (0.5 * self.data["a"]["x"] * dt)
+        self.data["v"]["y"] = vy_half + (0.5 * self.data["a"]["y"] * dt)
 
         self.t = t_next
-        
+
+    def _update_acceleration(self):
+        self.data["a"] = 0
+        for potential in self.potential:
+            potential.update_acceleration()
+
+    @staticmethod
+    def validate_potentials(potentials):
+        for potential in potentials:
+            assert isinstance(potential, Potential)
