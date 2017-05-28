@@ -19,21 +19,21 @@ class VelocityVerlet:
         dt = self.timestep
         t_next = self.t + dt
 
-        vx_half = self.data["v"]["x"] + (0.5 * self.data["a"]["x"] * dt)
-        vy_half = self.data["v"]["y"] + (0.5 * self.data["a"]["y"] * dt)
+        vx_half = self.data.v.x + (0.5 * self.data.a.x * dt)
+        vy_half = self.data.v.y + (0.5 * self.data.a.y * dt)
 
-        self.data["x"] += (vx_half * dt)
-        self.data["y"] += (vy_half * dt)
+        self.data.x += (vx_half * dt)
+        self.data.y += (vy_half * dt)
 
         self._update_acceleration()
 
-        self.data["v"]["x"] = vx_half + (0.5 * self.data["a"]["x"] * dt)
-        self.data["v"]["y"] = vy_half + (0.5 * self.data["a"]["y"] * dt)
+        self.data.v.x = vx_half + (0.5 * self.data.a.x * dt)
+        self.data.v.y = vy_half + (0.5 * self.data.a.y * dt)
 
         self.t = t_next
 
     def _update_acceleration(self):
-        self.data["a"] = 0
+        self.data.a = 0
         for potential in self.potential:
             potential.update_acceleration()
 

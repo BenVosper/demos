@@ -19,8 +19,8 @@ class Well2D(Potential):
         super().__init__(data, mask)
 
     def f(self):
-        x = self.data["x"]
-        y = self.data["y"]
+        x = self.data.x
+        y = self.data.y
 
         dx = x - self.well_x
         dy = y - self.well_y
@@ -36,5 +36,5 @@ class Well2D(Potential):
     def update_acceleration(self):
         fx, fy = self.f()
 
-        self.data["a"]["x"][self.mask] += (fx / self.data["mass"])[self.mask]
-        self.data["a"]["y"][self.mask] += (fy / self.data["mass"])[self.mask]
+        self.data.a.x[self.mask] += (fx / self.data.mass)[self.mask]
+        self.data.a.y[self.mask] += (fy / self.data.mass)[self.mask]

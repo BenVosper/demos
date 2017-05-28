@@ -14,31 +14,31 @@ n = 10
 xr = 100
 yr = 100
 
-data = numpy.zeros(n, dtype=[("x", float),
+particles = numpy.zeros(n, dtype=[("x", float),
                              ("y", float),
                              ("mass", float),
                              ("v", [("x", float), ("y", float)]),
                              ("a", [("x", float), ("y", float)]),
                              ])
+particles = numpy.rec.array(particles)
 
 
-data["x"] = numpy.random.random(n) * xr
-data["y"] = numpy.random.random(n) * yr
-
-data["mass"] = 1
+particles.x = numpy.random.random(n) * xr
+particles.y = numpy.random.random(n) * yr
+particles.mass = 1
 
 wellxy = (50, 50)
 
-well = Well2D(2, (wellxy[0], wellxy[1]), data)
-verlet = VelocityVerlet(data, well, 0.1)
+well = Well2D(2, (wellxy[0], wellxy[1]), particles)
+verlet = VelocityVerlet(particles, well, 0.1)
 
 r, g, b = (numpy.random.randint(0, 255, size=n),
            numpy.random.randint(0, 255, size=n),
            numpy.random.randint(0, 255, size=n))
 hexs = numpy.array(["#%02x%02x%02x" % (r, g, b) for r, g, b in zip(r, g, b)])
 
-source = ColumnDataSource({'x': data["x"],
-                           'y': data["y"],
+source = ColumnDataSource({'x': particles["x"],
+                           'y': particles["y"],
                            'color': hexs,
                            'alpha': numpy.full(n, 0.6)})
 
@@ -52,8 +52,8 @@ p.circle(x=wellxy[0], y=wellxy[1], radius=3, color="red")
 def update(source_dict=source):
     d = source_dict.data
     verlet.step()
-    d["x"] = verlet.data["x"]
-    d["y"] = verlet.data["y"]
+    d["x"] = verlet.data.x
+    d["y"] = verlet.data.y
     source_dict.data = d
 
 
@@ -79,8 +79,8 @@ def move(event):
                     "alpha": [(index, 0.9) for index in point_indices]}
 
         for index in point_indices:
-            data["v"]["x"][index] = 0
-            data["v"]["y"][index] = 0
+            particles.v.x[index] = 0
+            particles.v.y[index] = 0
 
         source.patch(to_patch)
 
