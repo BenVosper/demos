@@ -1,43 +1,64 @@
-from potentials import Potential
+from fields import Field
+from particles import Particles
 
 
 class VelocityVerlet:
+    """Calculate particle trajectories using the Velocity Verlet algorithm.
 
-    def __init__(self, data, potential, timestep):
-        self.data = data
+    An simple yet powerful algorithm which has seen use in a range of applications for many years.
+
+    For more info, see:
+    https://en.wikipedia.org/wiki/Verlet_integration#Velocity_Verlet
+    """
+
+    def __init__(self, particles, fields, timestep):
+        """Initialise simulation.
+
+        Args:
+            particles (Particles): The particles to use.
+            fields (list(Field)): A list of fields with which to update particle accelerations
+                                  at each timestep.
+            timestep (float): The amount of time (in seconds) that passes with each call to 'step'.
+        """
+        self.particles = particles
         self.timestep = timestep
-
-        if not type(potential) == list:
-            self.potential = [potential]
-        else:
-            self.potential = potential
-        self.validate_potentials(self.potential)
+        self.fields = fields
+        self.validate_setup()
 
         self.t = 0
 
     def step(self):
+        """Update particle positions and velocities."""
         dt = self.timestep
-        t_next = self.t + dt
 
-        vx_half = self.data.v.x + (0.5 * self.data.a.x * dt)
-        vy_half = self.data.v.y + (0.5 * self.data.a.y * dt)
+        # Calculate half-velocity using current acceleration and position
+        v_half = self.particles.v + (0.5 * self.particles.a * dt)
 
-        self.data.x += (vx_half * dt)
-        self.data.y += (vy_half * dt)
+        # Update position based on half-velocity
+        self.particles.pos += v_half * dt
 
+        # Calculate acceleration based on the combined action of active fields.
         self._update_acceleration()
 
-        self.data.v.x = vx_half + (0.5 * self.data.a.x * dt)
-        self.data.v.y = vy_half + (0.5 * self.data.a.y * dt)
+        # Update velocity using calculated acceleration
+        self.particles.v = v_half + (0.5 * self.particles.a * dt)
 
-        self.t = t_next
+        self.t += dt
 
     def _update_acceleration(self):
-        self.data.a = 0
-        for potential in self.potential:
-            potential.update_acceleration()
+        """Sum acceleration contributions of all active fields."""
+        self.particles.a = 0
+        for field in self.fields:
+            field.update_acceleration()
 
-    @staticmethod
-    def validate_potentials(potentials):
-        for potential in potentials:
-            assert isinstance(potential, Potential)
+    def validate_fields(self):
+        fields = self.fields
+        if type(fields) is not list:
+            raise TypeError("Fields must be supplied as a list.")
+        if not all(isinstance(field, Field) for field in fields):
+            raise TypeError("Please supply valid 'Field' subclasses.")
+
+    def validate_setup(self):
+        if not type(self.particles, Particles):
+            raise TypeError("Please supply a valid 'Particles' array.")
+        self.validate_fields()
