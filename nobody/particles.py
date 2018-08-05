@@ -79,6 +79,4 @@ class Particles(numpy.recarray):
             if type(name) != str:
                 raise TypeError("Extra parameter names must be strings.")
             if not isinstance(dtype, type) and not isinstance(dtype, numpy.dtype):
-                raise TypeError("Invalid datatype provided for extra parameter")
-
-
+                raise TypeError("Invalid datatype provided for extra parameter.")
