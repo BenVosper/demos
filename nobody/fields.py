@@ -9,33 +9,23 @@ class Field:
     particle behaviour.
     """
 
-    def __init__(self, particles, mask=None):
-        """Initialise field.
-
-        Args:
-            particles (Particles): The particles to act upon
-            mask (numpy.array (bool)): A boolean array with shape equal to the number of
-                                       particles. Particles corresponding to False mask elements
-                                       are not affected by the field. If not provided, all
-                                       particles are affected.
-        """
-        self.particles = particles
-        self.mask = mask or numpy.ones(self.particles.i.shape, bool)
-        self.validate_setup()
-
-    def validate_setup(self):
+    def validate_setup(self, particles):
         """Raise any errors encountered with provided arguments."""
         pass
 
-    def update_acceleration(self):
+    def get_mask(self, particles):
+        """Generate a boolean mask determining which particles to act upon."""
+        raise NotImplementedError("Should be overridden in subclasses.")
+
+    def update_acceleration(self, particles):
         """Update accelerations based on other particle parameters."""
         raise NotImplementedError("Should be overridden in subclasses.")
 
 
 class FixedDirectionMixin:
 
-    def validate_setup(self):
-        particle_dimensions = self.particles.dimensions
+    def validate_setup(self, particles):
+        particle_dimensions = particles.dimensions
         if len(self.vector) != particle_dimensions:
             raise ValueError("A {}-dimensional vector should be provided."
                              .format(particle_dimensions))
@@ -48,8 +38,8 @@ class FixedDirectionMixin:
 class ConstantForce(Field, FixedDirectionMixin):
     """A constant field with a fixed magnitude and direction."""
 
-    def __init__(self, particles, vector, force, mask=None):
-        """Initialise potential.
+    def __init__(self, vector, force):
+        """Initialise field.
 
         Args:
             vector (tuple): A vector matching the dimensionality of the particles indicating the
@@ -58,21 +48,23 @@ class ConstantForce(Field, FixedDirectionMixin):
         """
         self.vector = self.normalise_vector(vector)
         self.force = force
-        super().__init__(particles, mask)
 
-    @property
-    def acceleration_magnitude(self):
-        return self.force / self.particles.mass
+    def acceleration_magnitude(self, particles):
+        return self.force / particles.mass
 
-    def update_acceleration(self):
-        self.particles.a[self.mask] += self.vector * self.acceleration_magnitude
+    def get_mask(self, particles):
+        return numpy.ones(particles.shape, bool)
+
+    def update_acceleration(self, particles):
+        mask = self.get_mask(particles)
+        particles.a[mask] += self.vector * self.acceleration_magnitude
 
 
-class ConstantAcceleration(Field, FixedDirectionMixin):
+class ConstantAcceleration(ConstantForce):
     """An effective field providing a fixed acceleration to all particles."""
 
-    def __init__(self, particles, vector, acceleration, mask=None):
-        """Initialise potential.
+    def __init__(self, vector, acceleration):
+        """Initialise field.
 
         Args:
             vector (tuple): A vector matching the dimensionality of the particles indicating the
@@ -81,7 +73,38 @@ class ConstantAcceleration(Field, FixedDirectionMixin):
         """
         self.vector = self.normalise_vector(vector)
         self.acceleration = acceleration
-        super().__init__(particles, mask)
 
-    def update_acceleration(self):
-        self.particles.a[self.mask] += self.vector * self.acceleration
+    def acceleration_magnitude(self, particles):
+        return self.acceleration
+
+
+class Wall(ConstantForce):
+    """A hard wall.
+
+    Particles are prevented from crossing the wall by an infinitely-strong force which acts
+    if they cross the boundary.
+    """
+
+    def __init__(self, position, normal):
+        """Initialise field.
+
+        Args:
+            position (tuple): A vector matching the dimensionality of the particles indicating the
+                              position of the wall.
+            normal (tuple): A vector matching the dimensionality of the particles indicating the
+                            orientation of the wall.
+        """
+        self.position = position
+        force = 999999999999  # A big number. Be smarter.
+        super().__init__(vector=normal, force=force)
+
+    def validate_setup(self, particles):
+        particle_dimensions = particles.dimensions
+        if len(self.position) != particle_dimensions:
+            raise ValueError("A {}-dimensional position coordinate should be provided."
+                             .format(particle_dimensions))
+        super().validate_setup(particles)
+
+    def get_mask(self, particles):
+        plane_constant = numpy.dot(self.position, self.vector)
+        return numpy.dot(particles.pos, self.vector) < plane_constant
